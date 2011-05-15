@@ -1,0 +1,1 @@
+{"vertices":[{"id":1,"value":1,"x":100,"y":300},{"id":2,"value":2,"x":300,"y":300}],"edges":[{"id":1,"value":0,"from":1,"to":2,"directed":false},{"id":100,"value":"","from":1,"to":2,"directed":false}],"x":0,"y":0}
