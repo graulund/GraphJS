@@ -434,38 +434,43 @@ function Edge(id, value, from, to, directed){
 			if(typeof i     == u || i     <  0){ i     = 0 }
 			
 			// Edge curvature
-			var t = 0
 			var space = 50
-        	        span = (total-1) * space
-        	        t = -span/2 + i*space
+			var span  = (total-1) * space
+			var t     = -span/2 + i*space
 
 			dlog(["Drawing", total, i, t])
 			
 			// Draw!
-			var from = this.from, to = this.to
+			// Edge goes from a to b
+			var ax = this.from.x
+			var ay = this.from.y
+			var bx = this.to.x
+			var by = this.to.y
+			
 			styleContext(cx, style, false)
 			cx.beginPath()
-			cx.moveTo(from.x, from.y)
+			cx.moveTo(ax, ay)
 			
-			// Curved edge, part of multiedge
-			// Curve from a to b, over alpha.
-			// m is the midpoint of ab
-			var ax = from.x
-                        var ay = from.y
-                        var bx = to.x
-                        var by = to.y
+			if(t == 0){
+				// Straight edge
+				cx.lineTo(bx, by)
+			} else {
+				// Curved edge, part of multiedge
+				// Curve from a to b, over alpha.
+				// m is the midpoint of ab
+				var mx = ax + 0.5 * (bx - ax)
+				var my = ay + 0.5 * (by - ay)
 
-                        var mx = ax + 0.5 * (bx - ax)
-                        var my = ay + 0.5 * (by - ay)
+				// Length of am, since we need to normalize it
+				var l = Math.sqrt((ay-by)*(ay-by) + (bx-ax)*(bx-ax))
 
-                        // Length of am, since we need to normalize it
-                        var l = Math.sqrt((ay-by)*(ay-by) + (bx-ax)*(bx-ax))
+				// Find the center point of the quadrature
+				var alphax = mx + t * (-my+ay)/l
+				var alphay = my + t * (mx-ax)/l
 
-                        // Find the center point of the quadrature
-                        var alphax = mx + t * (-my+ay)/l
-                        var alphay = my + t * (mx-ax)/l
-                        
-			cx.quadraticCurveTo(alphax, alphay, bx, by)
+				cx.quadraticCurveTo(alphax, alphay, bx, by)
+			}
+			
 			cx.stroke()
 			
 			//TODO: Draw arrowhead
