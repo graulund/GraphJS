@@ -621,7 +621,7 @@ function getElement(x, y){
 				var Qy = (1-t)*(1-t) * ay + 2*(1-t)*t * alphay + t*t * by
 				
 				distToMouse = Math.sqrt((Qy-y)*(Qy-y) + (Qx-x)*(Qx-x))
-
+//alert(distToMouse)
 				if (distToMouse < tol) {
 					return e
 				}
