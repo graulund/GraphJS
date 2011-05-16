@@ -225,7 +225,8 @@ function Graph(vertices, edges){
 			r = []
 			for(var j in this.vertices){
 				u = this.vertices[j]
-				r.push(v.isNeighbour(u) ? 1 : 0)
+				//r.push(v.isNeighbour(u) ? 1 : 0)
+				r.push(v.edgeMultiplicity(u))
 			}
 			M.push(r)
 		}
@@ -391,6 +392,20 @@ function Vertex(id, value, x, y){
 		return false
 	}
 	
+	this.edgeMultiplicity = function(v){
+		var e, c = 0
+		for(var i in this.edges){
+			e = this.edges[i]
+			if(
+				(e.from === this && e.to   === v) ||
+				(e.to   === this && e.from === v)
+			){
+				c++
+			}
+		}
+		return c
+	}
+	
 	this.neighbours = function(){
 		var n = [], e
 		for(var i in this.edges){
@@ -402,6 +417,12 @@ function Vertex(id, value, x, y){
 			}
 		}
 		return n
+	}
+	
+	this.edgeGroupName = function(to){
+		var a = this.id, b = this.to.id
+		var c = (a <= b)
+		return (c ? a : b) + "," + (c ? b : a)
 	}
 	
 	this.attach()
