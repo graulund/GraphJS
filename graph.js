@@ -442,10 +442,17 @@ function Edge(id, value, from, to, directed){
 			
 			// Draw!
 			// Edge goes from a to b
-			var ax = this.from.x
-			var ay = this.from.y
-			var bx = this.to.x
-			var by = this.to.y
+			if(this.from.x < this.to.x) {
+				var ax = this.from.x
+				var ay = this.from.y
+				var bx = this.to.x
+				var by = this.to.y
+			} else {
+				var ax = this.to.x
+				var ay = this.to.y
+				var bx = this.from.x
+				var by = this.from.y
+			}
 			
 			styleContext(cx, style, false)
 			cx.beginPath()
@@ -572,7 +579,7 @@ function getElement(x, y){
 	// Edges
 	// New approach because of bezier curves
 	// Toletance tol (max distance from check point to mouse)
-	var tol = 5
+	var tol = 2
 	var edgegroups = graphs[0].edgeGroups()
 	// We find points on e with distance h (in pixels)
 	var h = 10
