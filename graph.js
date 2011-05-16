@@ -441,7 +441,7 @@ function Edge(id, value, from, to, directed){
 			dlog(["Drawing", total, i, t])
 			
 			// Draw!
-			// Edge goes from a to b
+			// Edge goes from a to b, and a is to the left of b (this has do be rewritten when we introduced directed edges)
 			if(this.from.x < this.to.x) {
 				var ax = this.from.x
 				var ay = this.from.y
