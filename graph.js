@@ -24,7 +24,8 @@ var vertices = [],
 var ce       = null,
     canvas   = null,
     cx       = null
-
+// UI panels/elements
+var ui       = { properties: null, styles: null, layers: null, graphs: null }
 
 // Utility functions --------------------------------------------------------------------------------------------------------
 
@@ -99,14 +100,12 @@ function Graph(vertices, edges){
 	
 	this.draw     = function(cx){
 		if(cx != null){
-			dlog(["Drawing graph"])
+			//dlog(["Drawing graph"])
 			var edgegroups = this.edgeGroups(), g
-			dlog(edgegroups)
-			//console.trace()
+			//dlog(edgegroups)
 			for(var s in edgegroups){
 				g = edgegroups[s]
 				for(var i in g){
-					dlog(["About to draw", g.length, i])
 					g[i].draw(cx, g.length, i)
 				}
 			}
@@ -114,7 +113,7 @@ function Graph(vertices, edges){
 				this.vertices[i].draw(cx)
 			}
 			if(selected.length <= 0 || selected[0] == this || selected[0] == null){
-				displayInfo($("#info"), null, cx)
+				displayInfo(ui.properties, null, cx)
 			}
 		}
 	}
@@ -261,14 +260,16 @@ function Graph(vertices, edges){
 		return 0
 	}
 	
-	this.edgeGroups = function(){
+	this.edgeGroups = function(groupname){
 		var l = {}, e, name
-		var n = function(a,b){ var c = (a <= b); return (c ? a : b) + "," + (c ? b : a) }
 		for(var i in this.edges){
 			e    = this.edges[i]
-			name = n(e.from.id, e.to.id)
+			name = e.groupName()
 			if(!(name in l)){ l[name] = [] }
 			l[name].push(e)
+		}
+		if(groupname){
+			return groupname in l ? l[groupname] : null
 		}
 		return l
 	}
@@ -438,7 +439,7 @@ function Edge(id, value, from, to, directed){
 			var span  = (total-1) * space
 			var t     = -span/2 + i*space
 
-			dlog(["Drawing", total, i, t])
+			//dlog(["Drawing", total, i, t])
 			
 			// Draw!
 			// Edge goes from a to b
@@ -517,6 +518,12 @@ function Edge(id, value, from, to, directed){
 			n = " node {" + this.value + "}"
 		}
 		return "\\path[draw] (v" + this.from.id + ") -" + (this.directed ? ">" : "-") + n + " (v" + this.to.id + ");"
+	}
+	
+	this.groupName = function(){
+		var a = this.from.id, b = this.to.id
+		var c = (a <= b)
+		return (c ? a : b) + "," + (c ? b : a)
 	}
 	
 	this.attach()
@@ -656,10 +663,20 @@ function drawAll(cx){
 	}
 	// Selected item
 	if(selected.length > 0){
+		var graph = graphs[gi]
 		for(var n in selected){
 			el = selected[n]
-			if(el instanceof Vertex || el instanceof Edge){
+			if(el instanceof Vertex){// || el instanceof Edge){
 				el.drawSel(cx)
+			}
+			if(el instanceof Edge){
+				// Get edgegroup
+				var g = graphs[gi].edgeGroups(el.groupName())
+				for(var i in g){
+					if(g[i] == el){
+						g[i].drawSel(cx, g.length, i)
+					}
+				}
 			}
 		}
 	}
@@ -669,9 +686,9 @@ function setSelected(el, evt, cx){
 	var shift = (typeof evt != u && evt != null && "shiftKey" in evt && evt.shiftKey)
 	if(selected.length <= 0 || (selected.length > 0 && el != selected[0])){
 		if(selected.length > 0 && shift){
-			$("#info").html('<div class="selection"><strong>Multiselection</strong></div>')
+			ui.properties.html('<div class="selection"><strong>Multiselection</strong></div>')
 		} else {
-			displayInfo($("#info"), el, cx)
+			displayInfo(ui.properties, el, cx)
 		}
 	}
 	if(shift){
@@ -691,9 +708,9 @@ function canvasMove(evt){
 		if(dp[0] == null){
 			dp = [x,y]
 			// Simulated hovering on touch devices
-			if(touch){
+			//if(touch){
 				hovered = getElement(x,y)
-			}
+			//}
 		}
 		// We're trying to drag an element
 		if(hovered != null){
@@ -718,12 +735,13 @@ function canvasMove(evt){
 				}
 			}
 			drawAll(cx)
-			displayInfo($("#info"), selected, cx) // I give up
+			displayInfo(ui.properties, selected, cx) // I give up
 			//evt.stopPropagation()
 		}
 	} else {
-		hovered = getElement(x,y)
+		//hovered = getElement(x,y)
 		if(uimode == 1){
+			hovered = getElement(x,y)
 			if(touch && hovered instanceof Vertex){
 				dp[(dp[0] == null) ? 0 : 1] = hovered
 				selected = [hovered]
@@ -810,12 +828,12 @@ function clearCanvas(cx, bypass){
 		graphs   = []; new Graph()
 		selected = [null]
 		drawAll(cx)
-		displayInfo($("#info"), null, cx)
+		displayInfo(ui.properties, null, cx)
 	}
 }
 
 function canvasStartAddEdge(cx){
-	var panel = $("#info")
+	var panel = ui.properties
 	var m     = $('<div class="message">' + ucf(click) + ' two vertices to add an edge between them. <a href="javascript://">Cancel</a></div>')
 	$("a", m).click(function(){ uimode = 0; dp = [null,null]; displayInfo(panel, null, cx) })
 	panel.empty().append(m)
@@ -830,12 +848,12 @@ function canvasFinishAddEdge(cx){
 		dp       = [null,null]
 		selected = [null]
 		drawAll(cx)
-		displayInfo($("#info"), null, cx)
+		displayInfo(ui.properties, null, cx)
 	}
 }
 
 function canvasStartAddVertex(cx){
-	var panel = $("#info")
+	var panel = ui.properties
 	var m     = $('<div class="message">' + ucf(click) + ' anywhere on the canvas to place a vertex. <a href="javascript://">Cancel</a></div>')
 	$("a", m).click(function(){ uimode = 0; displayInfo(panel, null, cx) })
 	panel.empty().append(m)
@@ -848,7 +866,7 @@ function canvasFinishAddVertex(x, y, cx){
 		uimode   = 0
 		selected = [null]
 		drawAll(cx)
-		displayInfo($("#info"), null, cx)
+		displayInfo(ui.properties, null, cx)
 	}
 }
 
@@ -861,7 +879,7 @@ function removeElement(el, graph, cx){
 	if(r){
 		graph.detachChild(el)
 		drawAll(cx)
-		displayInfo($("#info"), null, cx)
+		displayInfo(ui.properties, null, cx)
 	}
 	return r
 }
@@ -880,6 +898,7 @@ function displayInfo(panel, el, cx){
 	var graph = graphs[gi]
 	if(el != null){
 		if(el instanceof Vertex){
+			// Vertex info
 			var info = $(
 				'<div><a class="r button removebtn" href="javascript://">Remove vertex</a>' +
 				'<div class="selection"><strong>Vertex</strong></div>' +
@@ -894,6 +913,7 @@ function displayInfo(panel, el, cx){
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
 		}
 		if(el instanceof Edge){
+			// Edge info
 			var info = $(
 				'<div><a class="r button removebtn" href="javascript://">Remove edge</a>' +
 				'<div class="selection"><strong>Edge</strong></div>' +
@@ -906,6 +926,7 @@ function displayInfo(panel, el, cx){
 	} else {
 		var seq  = displaySequence(graph.degreeSeq())
 		var info = $(
+			// Graph info
 			'<div class="selection"><strong>Graph</strong></div>' +
 			'<p class="field"><span class="i">Vertices: </span>' + graph.vertices.length + '</p>' +
 			'<p class="field"><span class="i">Edges: </span>' + graph.edges.length + '</p>' +
@@ -961,10 +982,10 @@ var dedges = [ // [ [1, 2], [2, 4], [1, 3], [3, 4], [2, 3] ]
 $(document).ready(function(){
 	
 	// Variables (I really need to move these out of global scope...)
-	ce     = $("canvas")
-	canvas = ce.get(0)
-	cx     = canvas.getContext("2d")
-	var scale     = 1
+	ce        = $("canvas")
+	canvas    = ce.get(0)
+	cx        = canvas.getContext("2d")
+	var scale = 1
 	
 	// Canvas settings
 	cx.scale(scale, scale)
@@ -972,8 +993,11 @@ $(document).ready(function(){
 	cx.textAlign    = "center"
 	cx.textBaseline = "middle"
 	
+	// Elements
+	ui.properties   = $("#info")
+	
 	// Example
-	window.diamond = new Graph(dvertices, dedges)
+	window.diamond  = new Graph(dvertices, dedges)
 	diamond.draw(cx)
 	
 	// Mouse
@@ -991,13 +1015,13 @@ $(document).ready(function(){
 	// Buttons
 	$("#btnaddvertex").click(function(){ canvasStartAddVertex(cx) })
 	$("#btnaddedge").click(function(){ canvasStartAddEdge(cx) })
-	$("#btninfo").click(function(){ $("#info").toggle() })
+	$("#btninfo").click(function(){ ui.properties.toggle() })
 	$("#btnload").click(function(){ var j = prompt("Paste here a graph saved as a string by this app:"); if(j != null && j.length > 0){ clearCanvas(cx, true); graphs = []; graphFromJSON(j); drawAll(cx) } })
 	$("#btnsave").click(function(){ prompt("Store the following string somewhere and paste it back here when you want to load this graph again.", JSON.stringify(graphs[gi].toJSON())) })
 	$("#btnclear").click(function(){ clearCanvas(cx) })
 	
 	// Panels
-	displayInfo($("#info"), null, cx)
+	displayInfo(ui.properties, null, cx)
 })
 
 // JSON runtime, if you do not already have it
