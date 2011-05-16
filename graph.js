@@ -586,10 +586,10 @@ function getElement(x, y){
 	// Edges
 	// New approach because of bezier curves
 	// Toletance tol (max distance from check point to mouse)
-	var tol = 5
+	var tol = 3
 	var edgegroups = graphs[0].edgeGroups()
 	// We find points on e with distance h (in pixels)
-	var h = 10
+	var h = 5
 	
 	for(var s in edgegroups){
 		//alert("Here")
