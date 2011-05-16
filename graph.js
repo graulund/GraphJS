@@ -442,7 +442,7 @@ function Edge(id, value, from, to, directed){
 			//dlog(["Drawing", total, i, t])
 			
 			// Draw!
-			// Edge goes from a to b
+			// Edge goes from a to b, and a is to the left of b (this has do be rewritten when we introduced directed edges)
 			if(this.from.x < this.to.x) {
 				var ax = this.from.x
 				var ay = this.from.y
@@ -586,7 +586,7 @@ function getElement(x, y){
 	// Edges
 	// New approach because of bezier curves
 	// Toletance tol (max distance from check point to mouse)
-	var tol = 2
+	var tol = 5
 	var edgegroups = graphs[0].edgeGroups()
 	// We find points on e with distance h (in pixels)
 	var h = 10
@@ -607,11 +607,18 @@ function getElement(x, y){
 
 			// Curved edge, part of multiedge
 			// Curve from a to b, with control point alpha.
-			// m is the midpoint of ab		        
-		        var ax = e.from.x
-			var ay = e.from.y
-			var bx = e.to.x
-			var by = e.to.y			
+			// m is the midpoint of ab
+		        if(e.from.x < e.to.x) {
+				var ax = e.from.x
+				var ay = e.from.y
+				var bx = e.to.x
+				var by = e.to.y
+			} else {
+				var ax = e.to.x
+				var ay = e.to.y
+				var bx = e.from.x
+				var by = e.from.y
+			}
 			var mx = ax + 0.5 * (bx - ax)
 			var my = ay + 0.5 * (by - ay)
 			
@@ -623,13 +630,15 @@ function getElement(x, y){
 			var alphay = my + bend * (mx-ax)/l
 			
 			// Now we have the following function of the quadratic curve Q(t)
-			// (1-t)^2 a + 2(1-t)t alpha + t^2 b, where t = 0..1
+			// Q(t) = (1-t)^2 a + 2(1-t)t alpha + t^2 b, where t = 0..1
 			// Compute each of the d points
 			var n = l*2 // length of ab
-			//alert(n)
-			//alert(h)
+
+			// Take n/h steps of length h
 			for (var j = 0; j < n; j += h) {
+				// Find the corresponding value for t
 				var t = j/n
+				
 				// Compute coordinates of Q(t) = [Qx,Qy]
 				var Qx = (1-t)*(1-t) * ax + 2*(1-t)*t * alphax + t*t * bx
 				var Qy = (1-t)*(1-t) * ay + 2*(1-t)*t * alphay + t*t * by
