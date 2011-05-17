@@ -35,6 +35,8 @@ function oc(a){ var o = {}; for(var i=0;i<a.length;i++){ o[a[i]] = ""; } return 
 function he(str){ return str.toString().replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/</g, "&lt;").replace(/>/g, "&gt;") } // Special HTML chars encode
 function re(str){ return str.toString().replace(/&quot;/g, "\"").replace(/&#039;/, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") } // Special HTML chars decode
 function ucf(str){ str += ""; var f = str.charAt(0).toUpperCase(); return f + str.substr(1) } // Upper case first letter
+function is_numeric(mixed_var){ return (typeof(mixed_var) === 'number' || typeof(mixed_var) === 'string') && mixed_var !== '' && !isNaN(mixed_var); } // Kudos, PHPJS
+
 function noevt(evt){ evt.preventDefault() }
 
 function inArray(v, array){
@@ -273,6 +275,15 @@ function Graph(vertices, edges){
 			return groupname in l ? l[groupname] : null
 		}
 		return l
+	}
+	
+	this.isWeighted = function(){
+		for(var i in this.edges){
+			if(!is_numeric(this.edges[i].value)){
+				return false
+			}
+		}
+		return true
 	}
 	
 	this.complete  = function(cx){
@@ -866,9 +877,11 @@ function canvasStartAddEdge(cx){
 	var panel = ui.properties
 	var m     = $('<div class="message">' + ucf(click) + ' two vertices to add an edge between them. <a href="javascript://">Cancel</a></div>')
 	$("a", m).click(function(){ uimode = 0; dp = [null,null]; displayInfo(panel, null, cx) })
+	selected  = [null]
+	dp        = [null,null]
+	drawAll(cx)
 	panel.empty().append(m)
-	dp     = [null,null]
-	uimode = 1
+	uimode    = 1
 }
 
 function canvasFinishAddEdge(cx){
@@ -886,8 +899,12 @@ function canvasStartAddVertex(cx){
 	var panel = ui.properties
 	var m     = $('<div class="message">' + ucf(click) + ' anywhere on the canvas to place a vertex. <a href="javascript://">Cancel</a></div>')
 	$("a", m).click(function(){ uimode = 0; displayInfo(panel, null, cx) })
+	selected  = [null]
+	dp        = [null,null]
+	drawAll(cx)
 	panel.empty().append(m)
-	uimode = 2
+	uimode    = 2
+	
 }
 
 function canvasFinishAddVertex(x, y, cx){
@@ -957,12 +974,15 @@ function displayInfo(panel, el, cx){
 		var seq  = displaySequence(graph.degreeSeq())
 		var info = $(
 			// Graph info
+			'<div><a class="r button sizebtn" href="javascript://">Canvas size</a>' +
 			'<div class="selection"><strong>Graph</strong></div>' +
 			'<p class="field"><span class="i">Vertices: </span>' + graph.vertices.length + '</p>' +
 			'<p class="field"><span class="i">Edges: </span>' + graph.edges.length + '</p>' +
 			'<p class="field"><span class="i" title="Degree sequence">Deg. seq.: </span>' + (seq ? seq : '&nbsp;') + '</p>' +
-			'<p class="field"><span class="i" title="Number of spanning trees in this graph">Sp. trees: </span>' + graph.spanningTreeCount() + '</p>'
+			'<p class="field"><span class="i" title="Number of spanning trees in this graph">Sp. trees: </span>' + graph.spanningTreeCount() + '</p>' +
+			'</div>'
 		)
+		//$("a.sizebtn", info).click(function(){})
 	}
 	panel.empty().append(info)
 }
