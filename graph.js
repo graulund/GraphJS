@@ -25,7 +25,17 @@ var ce       = null,
     canvas   = null,
     cx       = null
 // UI panels/elements
-var ui       = { properties: null, styles: null, layers: null, graphs: null }
+var ui       = { properties: null, styles: null, elements: null, graphs: null }
+
+// Constants ----------------------------------------------------------------------------------------------------------------
+// (Defined as variables. Don't change them.)
+var GJ_TOOL_SELECT          = 0,
+    GJ_TOOL_ADD_EDGE        = 1,
+    GJ_TOOL_ADD_VERTEX      = 2,
+    GJ_TOOL_SELECT_VERTEX   = 3,
+    GJ_TOOL_SELECT_VERTICES = 4,
+    GJ_TOOL_SELECT_EDGE     = 5,
+    GJ_TOOL_SELECT_EDGES    = 6
 
 // Utility functions --------------------------------------------------------------------------------------------------------
 
@@ -36,7 +46,6 @@ function he(str){ return str.toString().replace(/&/g, "&amp;").replace(/"/g, "&q
 function re(str){ return str.toString().replace(/&quot;/g, "\"").replace(/&#039;/, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") } // Special HTML chars decode
 function ucf(str){ str += ""; var f = str.charAt(0).toUpperCase(); return f + str.substr(1) } // Upper case first letter
 function is_numeric(mixed_var){ return (typeof(mixed_var) === 'number' || typeof(mixed_var) === 'string') && mixed_var !== '' && !isNaN(mixed_var); } // Kudos, PHPJS
-
 function noevt(evt){ evt.preventDefault() }
 
 function inArray(v, array){
@@ -210,6 +219,10 @@ function Graph(vertices, edges){
 		return el
 	}
 	
+	this.contractEdge = function(e){
+		e.contract(this)
+	}
+	
 	this.adjacencyList = function(){
 		var l = [], e
 		for(var i in this.edges){
@@ -308,7 +321,7 @@ function Graph(vertices, edges){
 				}
 			}
 		}
-		drawAll(cx)
+		updateState()
 	}
 	
 	this.attach()
@@ -344,23 +357,9 @@ function Vertex(id, value, x, y){
 		cx.fill()
 		cx.stroke()
 		if(label && (typeof this.value == s || typeof this.value == n) && this.value !== ""){
-			var labelOffset = 14
-			styleContext(cx, labelStyle)
-			cx.beginPath()
-			cx.arc(this.x, this.y - labelOffset, labelStyle.vertexradius*2, 0, 2*Math.PI, true)
-			cx.closePath()
-			cx.fill()
-			cx.stroke()
-			cx.fillStyle = "#000"
-			cx.fillText(this.value, this.x, this.y - labelOffset)
+			drawLabel(this.value, this.x, this.y - 14)
 		}
 	}
-	
-	/*this.drawEdges = function(cx){
-		for(var i = 0; i < this.edges; i++){
-			this.edges[i].draw()
-		}
-	}*/
 	
 	this.update    = function(graph){
 		// Update various properties
@@ -372,12 +371,16 @@ function Vertex(id, value, x, y){
 		vertices.push(this)
 	}
 	
-	this.detach    = function(){
-		this.visible = false
-		listRemove(vertices, this)
-		listRemove(selected, this)
-		for(var i in this.edges){
-			this.edges[i].detach()
+	this.detach    = function(graph){
+		if(graph instanceof Graph){
+			graph.detachChild(this)
+		} else {
+			this.visible = false
+			listRemove(vertices, this)
+			listRemove(selected, this)
+			for(var i in this.edges){
+				this.edges[i].detach()
+			}
 		}
 	}
 	
@@ -514,6 +517,11 @@ function Edge(id, value, from, to, directed){
 			cx.stroke()
 			
 			//TODO: Draw arrowhead
+			
+			if(label && (typeof this.value == s || typeof this.value == n) && this.value !== ""){
+				var mid = this.midpoint()
+				drawLabel(this.value, mid[0], mid[1])
+			}
 		}
 	}
 	
@@ -530,14 +538,47 @@ function Edge(id, value, from, to, directed){
 		this.to.degree++
 	}
 	
-	this.detach  = function(){
-		this.visible = false
-		listRemove(edges,           this)
-		listRemove(selected,        this)
-		listRemove(this.from.edges, this)
-		listRemove(this.to.edges,   this)
-		this.from.degree--
-		this.to.degree--
+	this.detach  = function(graph){
+		if(graph instanceof Graph){
+			graph.detachChild(this)
+		} else {
+			this.visible = false
+			listRemove(edges,           this)
+			listRemove(selected,        this)
+			listRemove(this.from.edges, this)
+			listRemove(this.to.edges,   this)
+			this.from.degree--
+			this.to.degree--
+		}
+	}
+	
+	this.contract = function(graph){
+		var e, m = this.midpoint()
+		this.detach(graph)
+		dlog(this.from.edges)
+		for(var i in this.to.edges){
+			e = this.to.edges[i]
+			if(e.to == this.to){
+				e.to = this.from
+			}
+			if(e.from == this.to){
+				e.from = this.from
+			}
+			if(e.from == e.to){ // Contracted into nonexistance
+				this.to.edges.splice(i, 1)
+				e.detach(graph)
+				i--
+			}
+			this.from.edges.push(e)
+		}
+		dlog(this.from.edges)
+		this.to.edges = []
+		this.to.update()
+		this.to.detach(graph)
+		dlog([[this.from.x, this.from.y],[this.to.x, this.to.y],m])
+		this.from.x = m[0]
+		this.from.y = m[1]
+		this.from.update()
 	}
 	
 	this.toJSON  = function(){
@@ -550,6 +591,10 @@ function Edge(id, value, from, to, directed){
 			n = " node {" + this.value + "}"
 		}
 		return "\\path[draw] (v" + this.from.id + ") -" + (this.directed ? ">" : "-") + n + " (v" + this.to.id + ");"
+	}
+	
+	this.midpoint = function(){
+		return [(this.from.x + this.to.x)/2, (this.from.y + this.to.y)/2]
 	}
 	
 	this.groupName = function(){
@@ -689,14 +734,15 @@ function getElement(x, y){
 
 function evtPosition(evt, ce){
 	var o = ce.offset()
-	var x = (iu(evt.layerX) ? (iu(evt.offsetX) ? evt.x : evt.offsetX) : evt.layerX) - o.left
-	var y = (iu(evt.layerY) ? (iu(evt.offsetY) ? evt.y : evt.offsetY) : evt.layerY) - o.top
+	// Previously layerX and layerY
+	var x = (iu(evt.clientX) ? (iu(evt.offsetX) ? evt.x : evt.offsetX) : evt.clientX) - o.left
+	var y = (iu(evt.clientY) ? (iu(evt.offsetY) ? evt.y : evt.offsetY) : evt.clientY) - o.top
 	return [x,y]
 }
 
 function drawAll(cx){
 	if(!cx){ cx = window.cx }
-	dlog("DRAWING ALL")
+	//dlog("DRAWING ALL")
 	var el
 	cx.clearRect(0, 0, w, h)
 	for(var i = 0; i < graphs.length; i++){
@@ -723,6 +769,19 @@ function drawAll(cx){
 	}
 }
 
+function drawLabel(label, x, y){
+	if((typeof label == s || typeof label == n) && label !== ""){
+		styleContext(cx, labelStyle)
+		cx.beginPath()
+		cx.arc(x, y, labelStyle.vertexradius*2, 0, 2*Math.PI, true)
+		cx.closePath()
+		cx.fill()
+		cx.stroke()
+		cx.fillStyle = "#000"
+		cx.fillText(label, x, y)
+	}
+}
+
 function setSelected(el, evt, cx){
 	var shift = (typeof evt != u && evt != null && "shiftKey" in evt && evt.shiftKey)
 	if(selected.length <= 0 || (selected.length > 0 && el != selected[0])){
@@ -744,7 +803,7 @@ function canvasMove(evt){
 	var x = p[0]
 	var y = p[1]
 	
-	if(dragging && uimode == 0){
+	if(dragging && uimode == GJ_TOOL_SELECT){
 		// Set dragging position
 		if(dp[0] == null){
 			dp = [x,y]
@@ -775,13 +834,11 @@ function canvasMove(evt){
 					el.y = el.oy + (y - dp[1])
 				}
 			}
-			drawAll(cx)
-			displayInfo(ui.properties, selected, cx) // I give up
-			//evt.stopPropagation()
+			updateState() // <-- Inefficient
 		}
 	} else {
 		//hovered = getElement(x,y)
-		if(uimode == 1){
+		if(uimode == GJ_TOOL_ADD_EDGE){
 			hovered = getElement(x,y)
 			if(touch && hovered instanceof Vertex){
 				dp[(dp[0] == null) ? 0 : 1] = hovered
@@ -801,10 +858,11 @@ function canvasClick(evt){
 		var x    = p[0]
 		var y    = p[1]
 		var el   = getElement(x,y)
+		var alt  = (evt.altKey || evt.ctrlKey)
 		if(uimode == 0){
 			setSelected(el, evt, cx)
 		}
-		if(uimode == 0 && evt.altKey && evt.shiftKey && el instanceof Vertex){
+		if(uimode == 0 && alt && evt.shiftKey && el instanceof Vertex){
 			canvasStartAddEdge(cx)
 		}
 		if(uimode == 1 && el instanceof Vertex){
@@ -812,10 +870,33 @@ function canvasClick(evt){
 			selected = [el]
 			canvasFinishAddEdge(cx)
 		}
-		if((uimode == 2 || (uimode == 0 && evt.altKey && !evt.shiftKey)) && el == null){
+		if((uimode == 2 || (uimode == 0 && alt && !evt.shiftKey)) && el == null){
 			canvasFinishAddVertex(x, y, cx)
 		}
-		drawAll(cx)
+		updateState()
+	}
+}
+
+function canvasKey(evt){
+	var k  = evt.keyCode || evt.which
+	var up = 38, down = 40, left = 37, right = 39, s
+	//dlog(["Canvas key", k, evt])
+	if((k == up || k == down || k == left || k == right) && (selected.length > 0 && selected[0] != null)){
+		evt.preventDefault()
+		var inc = (k == down || k == right), 
+		    x   = (k == left || k == right)
+		for(var i in selected){
+			s = selected[i]
+			if(s.x && s.y && !isNaN(s.x) && !isNaN(s.y)){
+				if(x){
+					s.x = inc ? s.x + 1 : s.x - 1
+				} else {
+					s.y = inc ? s.y + 1 : s.y - 1
+				}
+			}
+		}
+		drawAll()
+		displayInfo(ui.properties, selected)
 	}
 }
 
@@ -868,8 +949,7 @@ function clearCanvas(cx, bypass){
 		vertices = []
 		graphs   = []; new Graph()
 		selected = [null]
-		drawAll(cx)
-		displayInfo(ui.properties, null, cx)
+		updateState()
 	}
 }
 
@@ -879,7 +959,7 @@ function canvasStartAddEdge(cx){
 	$("a", m).click(function(){ uimode = 0; dp = [null,null]; displayInfo(panel, null, cx) })
 	selected  = [null]
 	dp        = [null,null]
-	drawAll(cx)
+	updateState(false)
 	panel.empty().append(m)
 	uimode    = 1
 }
@@ -890,8 +970,7 @@ function canvasFinishAddEdge(cx){
 		uimode   = 0
 		dp       = [null,null]
 		selected = [null]
-		drawAll(cx)
-		displayInfo(ui.properties, null, cx)
+		updateState()
 	}
 }
 
@@ -901,7 +980,7 @@ function canvasStartAddVertex(cx){
 	$("a", m).click(function(){ uimode = 0; displayInfo(panel, null, cx) })
 	selected  = [null]
 	dp        = [null,null]
-	drawAll(cx)
+	updateState(false)
 	panel.empty().append(m)
 	uimode    = 2
 	
@@ -912,8 +991,7 @@ function canvasFinishAddVertex(x, y, cx){
 		graphs[gi].addVertex([x,y], cx)
 		uimode   = 0
 		selected = [null]
-		drawAll(cx)
-		displayInfo(ui.properties, null, cx)
+		updateState()
 	}
 }
 
@@ -925,18 +1003,29 @@ function removeElement(el, graph, cx){
 	var r = confirm("Are you sure you want to remove this " + t + "?")
 	if(r){
 		graph.detachChild(el)
-		drawAll(cx)
-		displayInfo(ui.properties, null, cx)
+		updateState()
 	}
 	return r
 }
 
 // Information display methods ---------------------------------------------------------------------------------------------
 
+function updateState(info){
+	// Canvas
+	drawAll()
+	// Properties
+	if(typeof info != b || (typeof info == b && info)){ displayInfo(ui.properties, selected) }
+	// Graphs
+	// Elements
+	displayElements(ui.elements)
+	// Styles
+}
+
 function displayInfo(panel, el, cx){
+	if(!cx){ cx = window.cx }
 	if(el instanceof Array){
 		if(el.length > 1){
-			panel.html('<div class="selection"><strong>Multiselection</strong></div>')
+			panel.html('<h2>Multiselection</h2>')
 			return
 		} else {
 			el = el[0]
@@ -948,13 +1037,13 @@ function displayInfo(panel, el, cx){
 			// Vertex info
 			var info = $(
 				'<div><a class="r button removebtn" href="javascript://">Remove vertex</a>' +
-				'<div class="selection"><strong>Vertex</strong></div>' +
+				'<h2>Vertex</h2>' +
 				'<div class="col"><p class="field"><label for="label">Label: </label><input type="text" id="label" size="3" value="' + he(el.value) + '" autocapitalize="off"></p>' +
 				'<p class="field"><span class="i">Degree: </span>' + he(el.degree) + '</p></div>' +
 				'<div class="col"><p class="field"><label for="vx">X: </label><input type="text" id="vx" size="3" value="' + Math.round(el.x) + '"></p>' + 
 				'<p class="field"><label for="vy">Y: </label><input type="text" id="vy" size="3" value="' + Math.round(el.y) + '"></p></div></div>'
 			)
-			$("input#label", info).keyup(function(){ el.value = this.value; drawAll(cx) })
+			$("input#label", info).keyup(function(){ el.value = this.value; updateState() })
 			$("input#vx",    info).keydown(function(evt){ var val = inputNumberKeyUp(this, evt); if(!isNaN(val)){ el.x = val; drawAll(cx) } })
 			$("input#vy",    info).keydown(function(evt){ var val = inputNumberKeyUp(this, evt); if(!isNaN(val)){ el.y = val; drawAll(cx) } })
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
@@ -962,20 +1051,21 @@ function displayInfo(panel, el, cx){
 		if(el instanceof Edge){
 			// Edge info
 			var info = $(
-				'<div><a class="r button removebtn" href="javascript://">Remove edge</a>' +
-				'<div class="selection"><strong>Edge</strong></div>' +
+				'<div><div class="r" style="white-space:nowrap"><a class="l button contractbtn" href="javascript://">Contract edge</a> <a class="button removebtn" href="javascript://">Remove edge</a></div>' +
+				'<h2>Edge</h2>' +
 				'<div class="col"><p class="field"><label for="label">Label: </label><input type="text" id="label" size="3" value="' + he(el.value) + '" autocapitalize="off"></p>' +
 				'</div>'
 			)
-			$("input#label", info).keyup(function(){ el.value = this.value; drawAll(cx) })
+			$("input#label", info).keyup(function(){ el.value = this.value; updateState() })
+			$("a.contractbtn", info).click(function(){ graph.contractEdge(el); updateState() })
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
 		}
 	} else {
 		var seq  = displaySequence(graph.degreeSeq())
 		var info = $(
 			// Graph info
-			'<div><a class="r button sizebtn" href="javascript://">Canvas size</a>' +
-			'<div class="selection"><strong>Graph</strong></div>' +
+			'<div><div class="r" style="white-space:nowrap"><a class="button sizebtn" href="javascript://">Canvas size</a> <a class="button tikzbtn" href="javascript://">Export to TikZ</a></div>' +
+			'<h2>Graph</h2>' +
 			'<p class="field"><span class="i">Vertices: </span>' + graph.vertices.length + '</p>' +
 			'<p class="field"><span class="i">Edges: </span>' + graph.edges.length + '</p>' +
 			'<p class="field"><span class="i" title="Degree sequence">Deg. seq.: </span>' + (seq ? seq : '&nbsp;') + '</p>' +
@@ -983,8 +1073,53 @@ function displayInfo(panel, el, cx){
 			'</div>'
 		)
 		//$("a.sizebtn", info).click(function(){})
+		$("a.tikzbtn", info).click(function(){ alert(graphs[gi].toTikZ()) })
 	}
 	panel.empty().append(info)
+}
+
+function displayElements(panel){
+	var list = '<ul class="elements">', graph = graphs[gi], a
+	// Vertices
+	if(graph.vertices.length > 0){
+		list += '<li class="h">Vertices</li>'
+		for(var i in graph.vertices){
+			a = graph.vertices[i]
+			list += '<li id="vertex-' + i + '"' + (inArray(a, selected) ? ' class="selected"' : '') + '><a href="javascript://">Vertex ' + he(a.value) + '</a></li>'
+		}
+	}
+	// Edges
+	if(graph.edges.length > 0){
+		list += '<li class="h">Edges</li>'
+		for(var i in graph.edges){
+			a = graph.edges[i]
+			list += '<li id="edge-' + i + '"' + (inArray(a, selected) ? ' class="selected"' : '') + '><a href="javascript://">Edge ' + he(a.value) + '</a></li>'
+		}
+	}
+	list += '</ul>'
+	list  = $('<h2>Elements</h2>' + list)
+	// Click handler
+	$("li a", list).click(function(evt){
+		var id = this.parentNode.id.split("-"), el = null
+		evt.preventDefault()
+		if(id.length > 1 && is_numeric(id[1])){
+			if(id[0] == "vertex"){
+				el = vertices[id[1]]
+			}
+			if(id[1] == "edge"){
+				el = edges[id[1]]
+			}
+		}
+		if(el){
+			if(evt.shiftKey){
+				selected.push(el)
+			} else {
+				selected = [el]
+			}
+		}
+		updateState()
+	})
+	panel.empty().append(list)
 }
 
 function displaySequence(seq){
@@ -1019,12 +1154,12 @@ var dvertices = [ // [ 1, 2, 3, 4 ]
 ]
 
 var dedges = [ // [ [1, 2], [2, 4], [1, 3], [3, 4], [2, 3] ]
-	//  id, value, from,         to
-	new Edge(1, 0, dvertices[0], dvertices[1]),
-	new Edge(2, 0, dvertices[1], dvertices[3]),
-	new Edge(3, 0, dvertices[0], dvertices[2]),
-	new Edge(4, 0, dvertices[2], dvertices[3]),
-	new Edge(5, 0, dvertices[1], dvertices[2])
+	//   id, value, from,         to
+	new Edge(1, "", dvertices[0], dvertices[1]),
+	new Edge(2, "", dvertices[1], dvertices[3]),
+	new Edge(3, "", dvertices[0], dvertices[2]),
+	new Edge(4, "", dvertices[2], dvertices[3]),
+	new Edge(5, "", dvertices[1], dvertices[2])
 ]
 
 // Initialising the document ------------------------------------------------------------------------------------------------
@@ -1045,16 +1180,19 @@ $(document).ready(function(){
 	
 	// Elements
 	ui.properties   = $("#info")
+	ui.graphs       = $("#graphs")
+	ui.elements     = $("#elements")
+	ui.styles       = $("#styles")
 	
 	// Example
-	window.diamond  = new Graph(dvertices, dedges)
-	diamond.draw(cx)
+	var diamond     = new Graph(dvertices, dedges)
 	
 	// Mouse
 	ce.mousedown     (function(){ dragging = true  })
 	$("body").mouseup(function(){ dragging = false })
 	ce.mousemove(canvasMove)
 	ce.click(canvasClick)
+	$(document).keydown(canvasKey)
 	
 	// Touch
 	document.body.addEventListener("touchstart",     touchStart, false)
@@ -1064,14 +1202,14 @@ $(document).ready(function(){
 	
 	// Buttons
 	$("#btnaddvertex").click(function(){ canvasStartAddVertex(cx) })
-	$("#btnaddedge").click(function(){ canvasStartAddEdge(cx) })
-	$("#btninfo").click(function(){ ui.properties.toggle() })
-	$("#btnload").click(function(){ var j = prompt("Paste here a graph saved as a string by this app:"); if(j != null && j.length > 0){ clearCanvas(cx, true); graphs = []; graphFromJSON(j); drawAll(cx) } })
-	$("#btnsave").click(function(){ prompt("Store the following string somewhere and paste it back here when you want to load this graph again.", JSON.stringify(graphs[gi].toJSON())) })
-	$("#btnclear").click(function(){ clearCanvas(cx) })
+	$("#btnaddedge"  ).click(function(){ canvasStartAddEdge(cx) })
+	$("#btninfo"     ).click(function(){ ui.properties.toggle() })
+	$("#btnload"     ).click(function(){ var j = prompt("Paste here a graph saved as a string by this app:"); if(j != null && j.length > 0){ clearCanvas(cx, true); graphs = []; graphFromJSON(j); drawAll(cx) } })
+	$("#btnsave"     ).click(function(){ prompt("Store the following string somewhere and paste it back here when you want to load this graph again.", JSON.stringify(graphs[gi].toJSON())) })
+	$("#btnclear"    ).click(function(){ clearCanvas(cx) })
 	
-	// Panels
-	displayInfo(ui.properties, null, cx)
+	// Let's go!
+	updateState()
 })
 
 // JSON runtime, if you do not already have it

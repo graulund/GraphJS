@@ -4,7 +4,7 @@
 	<title>Graph Theory JS/HTML5</title>
 	<!-- By Andy Graulund -->
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=740, initial-scale=1, maximum-scale=1">
+	<meta name="viewport" content="width=1070, initial-scale=1, maximum-scale=1">
 	<style type="text/css">
 		html, body {
 			background-color: #eee;
@@ -17,11 +17,28 @@
 			text-align: center;
 		}
 		
+		#container {
+			width: 970px;
+			margin: 0 auto;
+			text-align: left;
+			overflow: hidden;
+		}
+		
 		.l { float: left; margin-right: 20px; }
 		.r { float: right; margin-left: 20px; }
 		
 		a {
 			color: #25a;
+		}
+		
+		#primary {
+			float: left;
+			width: 640px;
+			margin: 0 30px 0 0;
+		}
+		
+		#secondary {
+			margin: 20px 0 0 670px;
 		}
 		
 		canvas {
@@ -37,6 +54,14 @@
 		
 		p.field {
 			clear: left;
+		}
+		
+		h1#logo {
+			float: right;
+			margin: 0;
+			font-weight: normal;
+			font-size: 125%;
+			color: #999;
 		}
 		
 		#toolbar {
@@ -83,7 +108,7 @@
 			background-image: -moz-linear-gradient(-90deg, #fff, #f6f6f6);
 		}
 		
-		#toolbar li a:active, a.button:active {
+		#toolbar li a:active, a.button:active, #toolbar li a.selected, a.button.selected {
 			background-color: #eaeaea;
 			color: #666;
 			padding: 4px 8px 2px;
@@ -132,11 +157,12 @@
 			color: #666;
 		}
 		
-		.panel .title, .panel .selection {
+		.panel h2, .panel .title, .panel .selection {
 			font-size: 100%;
 			font-weight: bold;
 			color: #999;
 			text-transform: uppercase;
+			margin: 0;
 		}
 		
 		.panel .col {
@@ -173,6 +199,51 @@
 			display: inline;
 		}
 		
+		.panel ul.elements {
+			list-style-type: none;
+			margin: 10px -20px 0;
+			padding: 0;
+			overflow: auto;
+		}
+		
+		.panel ul.elements li {
+			border-top: 1px solid #ddd;
+		}
+		
+		.panel ul.elements li:last-child {
+			border-bottom: 1px solid #ddd;
+		}
+		
+		.panel ul.elements li a {
+			display: block;
+			padding: 7px 20px;
+			color: #666;
+			text-decoration: none;
+		}
+		
+		.panel ul.elements li a:hover {
+			background-color: #eee;
+		}
+		
+		.panel ul.elements li.selected a {
+			background-color: #fafafa;
+			font-weight: bold;
+			color: #333;
+		}
+		
+		.panel ul.elements li.selected a:hover {
+			background-color: #fff;
+		}
+		
+		.panel ul.elements li.h {
+			background-color: #ddd;
+			padding: 2px 20px;
+			font-size: 86%;
+			font-weight: bold;
+			color: #fafafa;
+			text-transform: uppercase;
+		}
+		
 		input[type="text"]{
 			background-color: #fff;
 			border: 1px solid #ccc;
@@ -183,24 +254,50 @@
 			-moz-border-radius: 3px;
 			-webkit-border-radius: 3px;
 		}
+		
+		#graphs ul.elements, #styles ul.elements {
+			max-height: 150px;
+		}
+		
+		#elements ul.elements {
+			max-height: 300px;
+		}
 	</style>
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.0/jquery.min.js"></script>
 	<script type="text/javascript" src="sylvester.src.js"></script>
 	<script type="text/javascript" src="graph.js"></script>
 </head>
 <body>
-	<ul id="toolbar" style="width:640px">
-		<li class="left"><a id="btnaddvertex" href="javascript://" title="Add a new vertex to the canvas (Alt+Click)">Add vertex</a></li>
-		<li class="right"><a id="btnaddedge" href="javascript://" title="Add a new edge to the canvas (Shift+Alt+Click)">Add edge</a></li>
-		<li class="left right"><a id="btninfo" href="javascript://" title="Show/hide information box">Info</a></li>
-		<li class="left right"><a id="btnstyle" href="javascript://" title="Show/hide styles box">Styles</a></li>
-		<li class="left"><a id="btnload" href="javascript://" title="Load a saved graph from a string">Load</a></li>
-		<li class="right"><a id="btnsave" href="javascript://" title="Generate a saveable graph string">Save</a></li>
-		<li class="left right"><a id="btnclear" href="javascript://" title="Clear the canvas">Clear</a></li>
-	</ul>
-	<canvas width="640" height="480"></canvas>
-	<div id="info" class="panel" style="width:600px">
-		<div class="message">Pull the vertices!</div>
+	<div id="container" style="width:970px">
+		<h1 id="logo">GraphJS</h1>
+		<ul id="toolbar">
+			<li class="left"><a id="btnselect" href="javascript://" class="selected" title="Element selection mode (V)">Select</a></li>
+			<li><a id="btnaddvertex" href="javascript://" title="Add a new vertex to the canvas (Alt+Click)">Add vertex</a></li>
+			<li class="right"><a id="btnaddedge" href="javascript://" title="Add a new edge to the canvas (Shift+Alt+Click)">Add edge</a></li>
+			<li class="left right"><a id="btninfo" href="javascript://" title="Show/hide information box">Info</a></li>
+			<!-- <li class="left right"><a id="btnstyle" href="javascript://" title="Show/hide styles box">Styles</a></li> -->
+			<li class="left"><a id="btnload" href="javascript://" title="Load a saved graph from a string">Load</a></li>
+			<li class="right"><a id="btnsave" href="javascript://" title="Generate a saveable graph string">Save</a></li>
+			<li class="left right"><a id="btnclear" href="javascript://" title="Clear the canvas">Clear</a></li>
+		</ul>
+		<div id="primary" style="width:640px">
+			<canvas width="640" height="480"></canvas>
+			<div id="info" class="panel"></div>
+		</div>
+		<div id="secondary">
+			<div id="graphs" class="panel">
+				<h2>Graphs</h2>
+				<ul class="elements">
+					<li class="selected"><a href="javascript://">Graph 1</a></li>
+				</ul>
+			</div>
+			<div id="elements" class="panel">
+				<h2>Elements</h2>
+			</div>
+			<div id="styles" class="panel">
+				<h2>Styles</h2>
+			</div>
+		</div>
 	</div>
 </body>
 </html>
