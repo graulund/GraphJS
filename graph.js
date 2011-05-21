@@ -8,9 +8,10 @@ var n        = "number",
     b        = "boolean", 
     u        = "undefined", 
     uimode   = 0,
-    dragging = false, moved = false, dp = [null,null],
+    dragging = false, moved = false, dp = [null,null], dontclick = false,
     selected = [],
-    hovered  = null
+    hovered  = null,
+    modal    = null
 var touch    = "createTouch" in document
 var w        = 640,
     h        = 480,
@@ -46,6 +47,7 @@ function he(str){ return str.toString().replace(/&/g, "&amp;").replace(/"/g, "&q
 function re(str){ return str.toString().replace(/&quot;/g, "\"").replace(/&#039;/, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") } // Special HTML chars decode
 function ucf(str){ str += ""; var f = str.charAt(0).toUpperCase(); return f + str.substr(1) } // Upper case first letter
 function is_numeric(mixed_var){ return (typeof(mixed_var) === 'number' || typeof(mixed_var) === 'string') && mixed_var !== '' && !isNaN(mixed_var); } // Kudos, PHPJS
+function trimArray(array){ var a = []; for(var e in array){ if(typeof array[e] != u){ a.push(array[e]) } } return a }
 function noevt(evt){ evt.preventDefault() }
 
 function inArray(v, array){
@@ -108,6 +110,7 @@ function Graph(vertices, edges){
 	this.x        = 0 // An offset?
 	this.y        = 0
 	this.visible  = true
+	this.cmpltd   = false
 	
 	this.draw     = function(cx){
 		if(cx != null){
@@ -123,9 +126,9 @@ function Graph(vertices, edges){
 			for(var i in this.vertices){
 				this.vertices[i].draw(cx)
 			}
-			if(selected.length <= 0 || selected[0] == this || selected[0] == null){
+			/*if(selected.length <= 0 || selected[0] == this || selected[0] == null){
 				displayInfo(ui.properties, null, cx)
-			}
+			}*/
 		}
 	}
 	
@@ -151,9 +154,15 @@ function Graph(vertices, edges){
 	}
 	
 	this.toTikZ    = function(){
-		var o = "\\begin{tikzpicture}\n"
+		var o    = "\\begin{tikzpicture}\n"
+		var maxY = 0
 		for(var i in this.vertices){
-			o += "\t" + this.vertices[i].toTikZ() + "\n"
+			if(this.vertices[i].y > maxY){
+				maxY = this.vertices[i].y
+			}
+		}
+		for(var i in this.vertices){
+			o += "\t" + this.vertices[i].toTikZ(100, maxY) + "\n"
 		}
 		for(var i in this.edges){
 			o += "\t" + this.edges[i].toTikZ()    + "\n"
@@ -183,6 +192,7 @@ function Graph(vertices, edges){
 		this.vertices.push(v)
 		v.update(this)
 		this.draw(cx)
+		this.cmpltd = false
 		return v
 	}
 	
@@ -195,6 +205,7 @@ function Graph(vertices, edges){
 				this.edges.push(e)
 				e.update(this)
 				this.draw(cx)
+				this.cmpltd = false
 				return e
 			}
 		}
@@ -291,12 +302,48 @@ function Graph(vertices, edges){
 	}
 	
 	this.isWeighted = function(){
+		if(this.edges.length <= 0){ return false }
 		for(var i in this.edges){
 			if(!is_numeric(this.edges[i].value)){
 				return false
 			}
 		}
 		return true
+	}
+	
+	this.isComplete = function(){
+		// Autocompleted? Yes.
+		if(this.cmpltd){ return true }
+		// Might still be...
+		var n = this.vertices.length
+		if(this.edges.length == ((n*(n-1))/2)){
+			var seq = this.degreeSeq()
+			for(var i in seq){
+				if(seq[i] != n-1){
+					return false
+				}
+			}
+			return true
+		}
+		return false
+	}
+	
+	this.elementsWithinRect = function(x1, y1, x2, y2){
+		var xh  = Math.max(x1, x2),
+		    xl  = Math.min(x1, x2),
+		    yh  = Math.max(y1, y2),
+		    yl  = Math.min(y1, y2), a,
+		    els = []
+		// Vertices
+		for(var i in this.vertices){
+			a = this.vertices[i]
+			if(a.x <= xh && a.x >= xl && a.y <= yh && a.y >= yl){
+				els.push(a)
+			}
+		}
+		// Edges
+		// ????
+		return els
 	}
 	
 	this.complete  = function(cx){
@@ -321,7 +368,7 @@ function Graph(vertices, edges){
 				}
 			}
 		}
-		updateState()
+		this.cmpltd = true
 	}
 	
 	this.attach()
@@ -377,7 +424,7 @@ function Vertex(id, value, x, y){
 		} else {
 			this.visible = false
 			listRemove(vertices, this)
-			listRemove(selected, this)
+			if(this.id in selected){ delete selected[this.id] } //listRemove(selected, this)
 			for(var i in this.edges){
 				this.edges[i].detach()
 			}
@@ -388,8 +435,10 @@ function Vertex(id, value, x, y){
 		return { id: this.id, value: this.value, x: this.x, y: this.y } // No style support yet
 	}
 	
-	this.toTikZ    = function(){
-		return "\\draw (" + this.x + "," + this.y + ") node(v" + this.id + ") {};"
+	this.toTikZ    = function(size, maxY){
+		if(typeof size != n){ size = 1 }
+		var y = (typeof maxY == n && maxY > 0) ? maxY/size - this.y/size : this.y/size
+		return "\\draw (" + this.x/size + "," + y + ") node(v" + this.id + ") {};"
 	}
 	
 	this.isNeighbour = function(v){
@@ -544,7 +593,7 @@ function Edge(id, value, from, to, directed){
 		} else {
 			this.visible = false
 			listRemove(edges,           this)
-			listRemove(selected,        this)
+			if(this.id in selected){ delete selected[this.id] } //listRemove(selected,        this)
 			listRemove(this.from.edges, this)
 			listRemove(this.to.edges,   this)
 			this.from.degree--
@@ -644,6 +693,7 @@ function graphFromJSON(json){
 
 // Interface methods --------------------------------------------------------------------------------------------------------
 
+// The canvas coordinates
 function getElement(x, y){
 	var el, r
 	// Check if there's an element on the given coordinates; traverse in reverse order so we get the newest first
@@ -740,6 +790,7 @@ function evtPosition(evt, ce){
 	return [x,y]
 }
 
+// Drawing
 function drawAll(cx){
 	if(!cx){ cx = window.cx }
 	//dlog("DRAWING ALL")
@@ -782,22 +833,7 @@ function drawLabel(label, x, y){
 	}
 }
 
-function setSelected(el, evt, cx){
-	var shift = (typeof evt != u && evt != null && "shiftKey" in evt && evt.shiftKey)
-	if(selected.length <= 0 || (selected.length > 0 && el != selected[0])){
-		if(selected.length > 0 && shift){
-			ui.properties.html('<div class="selection"><strong>Multiselection</strong></div>')
-		} else {
-			displayInfo(ui.properties, el, cx)
-		}
-	}
-	if(shift){
-		selected.push(el)
-	} else {
-		selected = [el]
-	}
-}
-
+// Canvas events
 function canvasMove(evt){
 	var p = evtPosition(evt, ce), el
 	var x = p[0]
@@ -835,7 +871,20 @@ function canvasMove(evt){
 				}
 			}
 			updateState() // <-- Inefficient
+		} else {
+			// We're dragging a rectangle of selection
+			var selection  = graphs[gi].elementsWithinRect(dp[0], dp[1], x, y)
+			//selected       = evt.shiftKey ? selected.concat(selection) : selection
+			if(!evt.shiftKey){ selected = [] }
+			for(var i in selection){
+				selected[selection[i].id] = selection[i]
+			}
+			drawAll()
+			cx.strokeStyle = "rgba(153,153,153,0.5)"
+			cx.lineWidth   = 1
+			cx.strokeRect(dp[0], dp[1], x-dp[0], y-dp[1])
 		}
+		dontclick = true // Prevent click event on mouseup
 	} else {
 		//hovered = getElement(x,y)
 		if(uimode == GJ_TOOL_ADD_EDGE){
@@ -852,54 +901,62 @@ function canvasMove(evt){
 }
 
 function canvasClick(evt){
-	if(!dragging){
-		//dlog(evt)
+	dlog(["CLICK", dragging, dontclick])
+	if(!dragging && !dontclick){
 		var p    = evtPosition(evt, ce)
 		var x    = p[0]
 		var y    = p[1]
 		var el   = getElement(x,y)
 		var alt  = (evt.altKey || evt.ctrlKey)
-		if(uimode == 0){
+		dlog([el, uimode, $("#vertexautocomplete")])
+		if(uimode == GJ_TOOL_SELECT){
+			dlog(1)
 			setSelected(el, evt, cx)
+			updateState()
 		}
-		if(uimode == 0 && alt && evt.shiftKey && el instanceof Vertex){
+		if(uimode == GJ_TOOL_SELECT && alt && evt.shiftKey && el instanceof Vertex){
+			dlog(2)
 			canvasStartAddEdge(cx)
 		}
-		if(uimode == 1 && el instanceof Vertex){
+		if(uimode == GJ_TOOL_ADD_EDGE && el instanceof Vertex){
+			dlog(3)
 			dp[(dp[0] == null) ? 0 : 1] = el
 			selected = [el]
 			canvasFinishAddEdge(cx)
 		}
-		if((uimode == 2 || (uimode == 0 && alt && !evt.shiftKey)) && el == null){
+		if((uimode == GJ_TOOL_ADD_VERTEX || (uimode == GJ_TOOL_SELECT && alt && !evt.shiftKey)) && el == null){
+			dlog(4)
 			canvasFinishAddVertex(x, y, cx)
 		}
-		updateState()
 	}
+	if(dontclick){ dontclick = false }
 }
 
 function canvasKey(evt){
-	var k  = evt.keyCode || evt.which
-	var up = 38, down = 40, left = 37, right = 39, s
-	//dlog(["Canvas key", k, evt])
-	if((k == up || k == down || k == left || k == right) && (selected.length > 0 && selected[0] != null)){
-		evt.preventDefault()
-		var inc = (k == down || k == right), 
-		    x   = (k == left || k == right)
-		for(var i in selected){
-			s = selected[i]
-			if(s.x && s.y && !isNaN(s.x) && !isNaN(s.y)){
-				if(x){
-					s.x = inc ? s.x + 1 : s.x - 1
-				} else {
-					s.y = inc ? s.y + 1 : s.y - 1
+	if(evt.target.tagName == "HTML"){
+		var k  = evt.keyCode || evt.which
+		var up = 38, down = 40, left = 37, right = 39, s
+		if((k == up || k == down || k == left || k == right) && (selected.length > 0 && selected[0] != null)){
+			evt.preventDefault()
+			var inc = (k == down || k == right), 
+			    x   = (k == left || k == right)
+			for(var i in selected){
+				s = selected[i]
+				if(s.x && s.y && !isNaN(s.x) && !isNaN(s.y)){
+					if(x){
+						s.x = inc ? s.x + 1 : s.x - 1
+					} else {
+						s.y = inc ? s.y + 1 : s.y - 1
+					}
 				}
 			}
+			drawAll()
+			displayInfo(ui.properties, selected)
 		}
-		drawAll()
-		displayInfo(ui.properties, selected)
 	}
 }
 
+// Touch events
 function touchMove(evt){
 	if(evt.touches.length == 1 && evt.touches[0].target == canvas){
 		evt.preventDefault()
@@ -943,53 +1000,92 @@ function touchStart(evt) {
 	}
 }
 
-function clearCanvas(cx, bypass){
-	if(bypass || confirm("Are you sure you want to clear the canvas? This cannot be undoed.")){
-		edges    = []
-		vertices = []
-		graphs   = []; new Graph()
-		selected = [null]
-		updateState()
+// UI modes
+function setUimode(mode){
+	var btn = $(".uimode-" + mode)
+	if(btn.length > 0){
+		$(".uimode").removeClass("selected")
+		btn.addClass("selected")
+		uimode = mode
 	}
+}
+
+function clearUimode(){
+	setUimode(GJ_TOOL_SELECT)
+	dp       = [null,null]
+	selected = [null]
+	updateState()
 }
 
 function canvasStartAddEdge(cx){
 	var panel = ui.properties
-	var m     = $('<div class="message">' + ucf(click) + ' two vertices to add an edge between them. <a href="javascript://">Cancel</a></div>')
-	$("a", m).click(function(){ uimode = 0; dp = [null,null]; displayInfo(panel, null, cx) })
+	var m     = $('<h2>Add edge</h2><p>' + ucf(click) + ' two vertices to add an edge between them. <a href="javascript://">Back</a></p>')
+	$("a", m).click(function(){ setUimode(GJ_TOOL_SELECT); dp = [null,null]; updateState() })
 	selected  = [null]
 	dp        = [null,null]
 	updateState(false)
 	panel.empty().append(m)
-	uimode    = 1
+	setUimode(GJ_TOOL_ADD_EDGE)
 }
 
 function canvasFinishAddEdge(cx){
-	if(uimode == 1 && dp[0] instanceof Vertex && dp[1] instanceof Vertex){
+	if(uimode == GJ_TOOL_ADD_EDGE && dp[0] instanceof Vertex && dp[1] instanceof Vertex){
 		graphs[gi].addEdge(dp, cx)
-		uimode   = 0
-		dp       = [null,null]
-		selected = [null]
-		updateState()
+		clearUimode()
 	}
 }
 
 function canvasStartAddVertex(cx){
 	var panel = ui.properties
-	var m     = $('<div class="message">' + ucf(click) + ' anywhere on the canvas to place a vertex. <a href="javascript://">Cancel</a></div>')
-	$("a", m).click(function(){ uimode = 0; displayInfo(panel, null, cx) })
+	var m     = $('<h2>Add vertex</h2><p>' + ucf(click) + ' anywhere on the canvas to place a vertex. <a href="javascript://">Back</a></p><p><span><input type="checkbox" id="vertexautocomplete"> <label for="vertexautocomplete">Auto-complete graph</label></span></p>')
+	$("a", m).click(function(){ setUimode(GJ_TOOL_SELECT); updateState() })
 	selected  = [null]
 	dp        = [null,null]
 	updateState(false)
 	panel.empty().append(m)
-	uimode    = 2
-	
+	setUimode(GJ_TOOL_ADD_VERTEX)
 }
 
 function canvasFinishAddVertex(x, y, cx){
 	if(x >= 0 && y >= 0){
 		graphs[gi].addVertex([x,y], cx)
-		uimode   = 0
+		dlog($("#vertexautocomplete"))
+		if($("#vertexautocomplete").is(":checked")){ // Kind of rough right now
+			graphs[gi].complete()
+			updateState(false)
+		} else {
+			clearUimode()
+		}
+	}
+}
+
+// Functionalities
+function setSelected(el, evt, cx){
+	var shift = (typeof evt != u && evt != null && "shiftKey" in evt && evt.shiftKey)
+	if(typeof el != o){ el = null }
+	if(el == null || el instanceof Vertex || el instanceof Edge){
+		if(selected.length <= 0 || (selected.length > 0 && el != selected[0])){
+			if(selected.length > 0 && shift){
+				ui.properties.html('<div class="selection"><strong>Multiselection</strong></div>')
+			} else {
+				displayInfo(ui.properties, el, cx)
+			}
+		}
+		/*if(shift){
+			selected.push(el)
+		} else {
+			selected = [el]
+		}*/
+		if(!shift){ selected = [] }
+		selected[el == null ? 0 : el.id] = el
+	}
+}
+
+function clearCanvas(cx, bypass){
+	if(bypass || confirm("Are you sure you want to clear the canvas? This cannot be undoed.")){
+		edges    = []
+		vertices = []
+		graphs   = []; new Graph()
 		selected = [null]
 		updateState()
 	}
@@ -1024,6 +1120,7 @@ function updateState(info){
 function displayInfo(panel, el, cx){
 	if(!cx){ cx = window.cx }
 	if(el instanceof Array){
+		el = trimArray(el)
 		if(el.length > 1){
 			panel.html('<h2>Multiselection</h2>')
 			return
@@ -1043,7 +1140,8 @@ function displayInfo(panel, el, cx){
 				'<div class="col"><p class="field"><label for="vx">X: </label><input type="text" id="vx" size="3" value="' + Math.round(el.x) + '"></p>' + 
 				'<p class="field"><label for="vy">Y: </label><input type="text" id="vy" size="3" value="' + Math.round(el.y) + '"></p></div></div>'
 			)
-			$("input#label", info).keyup(function(){ el.value = this.value; updateState() })
+			$("input#label", info).keyup (function(){ el.value = this.value; drawAll() })
+			$("input#label", info).change(function(){ el.value = this.value; updateState() })
 			$("input#vx",    info).keydown(function(evt){ var val = inputNumberKeyUp(this, evt); if(!isNaN(val)){ el.x = val; drawAll(cx) } })
 			$("input#vy",    info).keydown(function(evt){ var val = inputNumberKeyUp(this, evt); if(!isNaN(val)){ el.y = val; drawAll(cx) } })
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
@@ -1051,21 +1149,35 @@ function displayInfo(panel, el, cx){
 		if(el instanceof Edge){
 			// Edge info
 			var info = $(
-				'<div><div class="r" style="white-space:nowrap"><a class="l button contractbtn" href="javascript://">Contract edge</a> <a class="button removebtn" href="javascript://">Remove edge</a></div>' +
+				'<div><div class="r" style="white-space:nowrap"><a class="button contractbtn" href="javascript://">Contract edge</a> <a class="button removebtn" href="javascript://">Remove edge</a></div>' +
 				'<h2>Edge</h2>' +
 				'<div class="col"><p class="field"><label for="label">Label: </label><input type="text" id="label" size="3" value="' + he(el.value) + '" autocapitalize="off"></p>' +
 				'</div>'
 			)
-			$("input#label", info).keyup(function(){ el.value = this.value; updateState() })
+			$("input#label", info).keyup (function(){ el.value = this.value; drawAll() })
+			$("input#label", info).change(function(){ el.value = this.value; updateState() })
 			$("a.contractbtn", info).click(function(){ graph.contractEdge(el); updateState() })
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
 		}
 	} else {
-		var seq  = displaySequence(graph.degreeSeq())
-		var info = $(
+		var seq   = displaySequence(graph.degreeSeq())
+		var adj   = [], autoname = ""
+		if(graph.vertices.length <= 0){
+			adj.push("empty")
+		} else {
+			if(graph.isWeighted()){
+				adj.push("weighted")
+			}
+			if(graph.isComplete()){
+				adj.push("complete")
+				autoname = "<em>K</em><sub>" + graph.vertices.length + "</sub>"
+			}
+		}
+		var title = (adj.length > 0 ? ucf(adj.join(" ")) + " g" : "G") + "raph" + (autoname ? " " + autoname : "")
+		var info  = $(
 			// Graph info
 			'<div><div class="r" style="white-space:nowrap"><a class="button sizebtn" href="javascript://">Canvas size</a> <a class="button tikzbtn" href="javascript://">Export to TikZ</a></div>' +
-			'<h2>Graph</h2>' +
+			'<h2>' + title + '</h2>' +
 			'<p class="field"><span class="i">Vertices: </span>' + graph.vertices.length + '</p>' +
 			'<p class="field"><span class="i">Edges: </span>' + graph.edges.length + '</p>' +
 			'<p class="field"><span class="i" title="Degree sequence">Deg. seq.: </span>' + (seq ? seq : '&nbsp;') + '</p>' +
@@ -1073,13 +1185,13 @@ function displayInfo(panel, el, cx){
 			'</div>'
 		)
 		//$("a.sizebtn", info).click(function(){})
-		$("a.tikzbtn", info).click(function(){ alert(graphs[gi].toTikZ()) })
+		$("a.tikzbtn", info).click(function(){ alert(graphs[gi].toTikZ()) }) // Need modal
 	}
 	panel.empty().append(info)
 }
 
 function displayElements(panel){
-	var list = '<ul class="elements">', graph = graphs[gi], a
+	var list = "", graph = graphs[gi], a
 	// Vertices
 	if(graph.vertices.length > 0){
 		list += '<li class="h">Vertices</li>'
@@ -1096,18 +1208,18 @@ function displayElements(panel){
 			list += '<li id="edge-' + i + '"' + (inArray(a, selected) ? ' class="selected"' : '') + '><a href="javascript://">Edge ' + he(a.value) + '</a></li>'
 		}
 	}
-	list += '</ul>'
-	list  = $('<h2>Elements</h2>' + list)
+	//list += '</ul>'
+	list  = $(list) //$('<h2>Elements</h2>' + list)
 	// Click handler
-	$("li a", list).click(function(evt){
+	$("a", list).click(function(evt){
 		var id = this.parentNode.id.split("-"), el = null
 		evt.preventDefault()
 		if(id.length > 1 && is_numeric(id[1])){
 			if(id[0] == "vertex"){
-				el = vertices[id[1]]
+				el = graph.vertices[id[1]]
 			}
-			if(id[1] == "edge"){
-				el = edges[id[1]]
+			if(id[0] == "edge"){
+				el = graph.edges[id[1]]
 			}
 		}
 		if(el){
@@ -1119,7 +1231,7 @@ function displayElements(panel){
 		}
 		updateState()
 	})
-	panel.empty().append(list)
+	$("ul.elements", panel).empty().append(list)
 }
 
 function displaySequence(seq){
@@ -1141,6 +1253,19 @@ function inputNumberKeyUp(el, evt){
 	return val
 }
 
+// Modal
+function createModal(title, html){
+	$("body").append('<div class="behindmodal"></div><div id="modal"><h2>' + title + '</h2>' + html + '</div>')
+	modal = $("#modal")
+}
+
+function clearModal(){
+	if(modal != null){
+		$(".behindmodal, #modal").remove()
+		modal = null
+	}
+}
+
 // Our example -------------------------------------------------------------------------------------------------------------
 
 // Lucy in the sky with the diamond
@@ -1155,11 +1280,11 @@ var dvertices = [ // [ 1, 2, 3, 4 ]
 
 var dedges = [ // [ [1, 2], [2, 4], [1, 3], [3, 4], [2, 3] ]
 	//   id, value, from,         to
-	new Edge(1, "", dvertices[0], dvertices[1]),
-	new Edge(2, "", dvertices[1], dvertices[3]),
-	new Edge(3, "", dvertices[0], dvertices[2]),
-	new Edge(4, "", dvertices[2], dvertices[3]),
-	new Edge(5, "", dvertices[1], dvertices[2])
+	new Edge(5, "", dvertices[0], dvertices[1]),
+	new Edge(6, "", dvertices[1], dvertices[3]),
+	new Edge(7, "", dvertices[0], dvertices[2]),
+	new Edge(8, "", dvertices[2], dvertices[3]),
+	new Edge(9, "", dvertices[1], dvertices[2])
 ]
 
 // Initialising the document ------------------------------------------------------------------------------------------------
@@ -1201,6 +1326,7 @@ $(document).ready(function(){
 	document.body.addEventListener("touchmove",      touchMove, false)
 	
 	// Buttons
+	$("#btnselect"   ).click(function(){ clearUimode() })
 	$("#btnaddvertex").click(function(){ canvasStartAddVertex(cx) })
 	$("#btnaddedge"  ).click(function(){ canvasStartAddEdge(cx) })
 	$("#btninfo"     ).click(function(){ ui.properties.toggle() })

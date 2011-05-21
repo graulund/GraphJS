@@ -182,8 +182,29 @@
 			vertical-align: middle;
 		}
 		
+		.panel p span label {
+			display: inline;
+			float: none;
+			width: auto;
+		}
+		
 		.panel p input {
 			vertical-align: middle;
+		}
+		
+		input[type="text"] {
+			background-color: #fff;
+			border: 1px solid #ccc;
+			font: 100% 'Helvetica Neue', Helvetica, sans-serif;
+			color: #111;
+			padding: 1px 3px;
+			border-radius: 3px;
+			-moz-border-radius: 3px;
+			-webkit-border-radius: 3px;
+		}
+		
+		input[type="checkbox"], input[type="radio"] {
+			margin: 0 2px 0 0;
 		}
 		
 		.panel .sequence .sorted {
@@ -216,6 +237,7 @@
 		
 		.panel ul.elements li a {
 			display: block;
+			line-height: 1em;
 			padding: 7px 20px;
 			color: #666;
 			text-decoration: none;
@@ -244,23 +266,42 @@
 			text-transform: uppercase;
 		}
 		
-		input[type="text"]{
-			background-color: #fff;
-			border: 1px solid #ccc;
-			font: 100% 'Helvetica Neue', Helvetica, sans-serif;
-			color: #111;
-			padding: 1px 3px;
-			border-radius: 3px;
-			-moz-border-radius: 3px;
-			-webkit-border-radius: 3px;
-		}
-		
 		#graphs ul.elements, #styles ul.elements {
 			max-height: 150px;
 		}
 		
 		#elements ul.elements {
 			max-height: 300px;
+		}
+		
+		.panel a.add {
+			float: right;
+			display: block;
+			width: 16px;
+			height: 16px;
+			background: transparent url(img/add.png) no-repeat 0 0;
+			overflow: hidden;
+			/*background-color: #ccc;
+			font-weight: bold;
+			color: #fff;
+			text-decoration: none;
+			padding: 2px 4px;
+			width: 9px;
+			height: 12px;
+			border-radius: 3px;
+			-moz-border-radius: 3px;
+			-webkit-border-radius: 3px;*/
+		}
+		
+		.panel a.add:hover {
+			/*background-color: #999;*/
+			background-position: 0 -16px;
+		}
+		
+		.panel a.add span {
+			position: absolute;
+			left: -9999px;
+			width: 9000px;
 		}
 	</style>
 	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.0/jquery.min.js"></script>
@@ -271,9 +312,9 @@
 	<div id="container" style="width:970px">
 		<h1 id="logo">GraphJS</h1>
 		<ul id="toolbar">
-			<li class="left"><a id="btnselect" href="javascript://" class="selected" title="Element selection mode (V)">Select</a></li>
-			<li><a id="btnaddvertex" href="javascript://" title="Add a new vertex to the canvas (Alt+Click)">Add vertex</a></li>
-			<li class="right"><a id="btnaddedge" href="javascript://" title="Add a new edge to the canvas (Shift+Alt+Click)">Add edge</a></li>
+			<li class="left"><a id="btnselect" href="javascript://" class="uimode uimode-0 selected" title="Element selection mode (V)">Select</a></li>
+			<li><a id="btnaddvertex" href="javascript://" class="uimode uimode-2" title="Add a new vertex to the canvas (Alt+Click)">Add vertex</a></li>
+			<li class="right"><a id="btnaddedge" href="javascript://" class="uimode uimode-1" title="Add a new edge to the canvas (Shift+Alt+Click)">Add edge</a></li>
 			<li class="left right"><a id="btninfo" href="javascript://" title="Show/hide information box">Info</a></li>
 			<!-- <li class="left right"><a id="btnstyle" href="javascript://" title="Show/hide styles box">Styles</a></li> -->
 			<li class="left"><a id="btnload" href="javascript://" title="Load a saved graph from a string">Load</a></li>
@@ -286,6 +327,7 @@
 		</div>
 		<div id="secondary">
 			<div id="graphs" class="panel">
+				<a class="add" href="javascript://" title="Add a new graph"><span>+</span></a>
 				<h2>Graphs</h2>
 				<ul class="elements">
 					<li class="selected"><a href="javascript://">Graph 1</a></li>
@@ -293,9 +335,12 @@
 			</div>
 			<div id="elements" class="panel">
 				<h2>Elements</h2>
+				<ul class="elements"></ul>
 			</div>
 			<div id="styles" class="panel">
+				<a class="add" href="javascript://" title="Add a new style"><span>+</span></a>
 				<h2>Styles</h2>
+				<ul class="elements"></ul>
 			</div>
 		</div>
 	</div>
