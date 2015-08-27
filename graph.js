@@ -1314,6 +1314,8 @@ function clearModal(){
 function setCanvasSize(){
 	context.canvas.width  = $(window).width() - 310
 	context.canvas.height = $(window).height() - 190
+	w = context.canvas.width
+	h = context.canvas.height
 }
 
 // Our example -------------------------------------------------------------------------------------------------------------
