@@ -625,13 +625,26 @@ function Edge(id, value, from, to, directed){
 	}
 
 	this.split = function(graph){
-		/*Add a vertex at the midpoint*/
+		/*Add a vertex M at the midpoint*/
 		var midpoint = this.midpoint()
-		var mid = graph.addVertex([midpoint[0], midpoint[1]])
+		var M = graph.addVertex([midpoint[0], midpoint[1]])
 		
-		/*Join edges to it*/
-		graph.addEdge([mid, this.to])
-		this.to = mid
+		/*We want edges AM (this) and MB (other)*/
+		var A = this.from, B = this.to
+		
+		/*Move this to AM*/
+		this.to = M
+		M.edges.push(this)
+		listRemove(B.edges, this)
+		
+		/*Add other as MB*/
+		var other = graph.addEdge([M, B])
+		M.edges.push(other)
+		B.edges.push(other)
+		
+		A.update()
+		M.update()
+		B.update()
 	}
 	
 	this.contract = function(graph){
