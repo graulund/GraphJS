@@ -234,6 +234,10 @@ function Graph(vertices, edges){
 		return el
 	}
 
+	this.splitEdge = function(e){
+		e.split(this)
+	}
+
 	this.contractEdge = function(e){
 		e.contract(this)
 	}
@@ -620,6 +624,16 @@ function Edge(id, value, from, to, directed){
 		}
 	}
 
+	this.split = function(graph){
+		/*Add a vertex at the midpoint*/
+		var midpoint = this.midpoint()
+		var mid = graph.addVertex([midpoint[0], midpoint[1]])
+		
+		/*Join edges to it*/
+		graph.addEdge([mid, this.to])
+		this.to = mid
+	}
+	
 	this.contract = function(graph){
 		var e, m = this.midpoint()
 		this.detach(graph)
@@ -1177,13 +1191,14 @@ function displayInfo(panel, el, cx){
 		if(el instanceof Edge){
 			// Edge info
 			var info = $(
-				'<div><div class="r" style="white-space:nowrap"><a class="button contractbtn" href="javascript://">Contract edge</a> <a class="button removebtn" href="javascript://">Remove edge</a></div>' +
+				'<div><div class="r" style="white-space:nowrap"><a class="button splitbtn" href="javascript://">Split edge</a> <a class="button contractbtn" href="javascript://">Contract edge</a> <a class="button removebtn" href="javascript://">Remove edge</a></div>' +
 				'<h2>Edge</h2>' +
 				'<div class="col"><p class="field"><label for="label">Label: </label><input type="text" id="label" size="3" value="' + he(el.value) + '" autocapitalize="off"></p>' +
 				'</div>'
 			)
 			$("input#label", info).keyup (function(){ el.value = this.value; drawAll() })
 			$("input#label", info).change(function(){ el.value = this.value; updateState() })
+			$("a.splitbtn", info).click(function(){ graph.splitEdge(el); updateState() })
 			$("a.contractbtn", info).click(function(){ graph.contractEdge(el); updateState() })
 			$("a.removebtn", info).click(function(){ removeElement(el, graph, cx) })
 		}
