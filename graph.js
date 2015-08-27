@@ -4,11 +4,11 @@
 var GraphJS = (function($){
 
 // Basic stuff --------------------------------------------------------------------------------------------------------------
-var n        = "number", 
-    s        = "string", 
-    o        = "object", 
-    b        = "boolean", 
-    u        = "undefined", 
+var n        = "number",
+    s        = "string",
+    o        = "object",
+    b        = "boolean",
+    u        = "undefined",
     uimode   = 0,
     dragging = false, moved = false, dp = [null,null], dontclick = false,
     selected = [],
@@ -81,7 +81,7 @@ function ElementStyle(strokecolor, fillcolor, strokewidth, vertexradius){
 	this.fillcolor    = fillcolor
 	this.strokewidth  = strokewidth
 	this.vertexradius = vertexradius
-	
+
 	this.toTikZ       = function(){
 		// TODO: convert colors
 		return "\\tikzstyle{style" + this.id + "}=[" + this.shape + ",fill=" + this.fillcolor + ",draw=" + this.strokecolor + ",line width=" + this.strokewidth + "]"
@@ -113,7 +113,7 @@ function Graph(vertices, edges){
 	this.y        = 0
 	this.visible  = true
 	this.cmpltd   = false
-	
+
 	this.draw     = function(cx){
 		if(cx != null){
 			//dlog(["Drawing graph"])
@@ -133,17 +133,17 @@ function Graph(vertices, edges){
 			}*/
 		}
 	}
-	
+
 	this.attach    = function(){
 		this.visible = true
 		graphs.push(this)
 	}
-	
+
 	this.detach    = function(){
 		this.visible = false
 		listRemove(graphs, this)
 	}
-	
+
 	this.toJSON    = function(){
 		var o = { vertices: [], edges: [], x: this.x, y: this.y }
 		for(var i in this.vertices){
@@ -154,7 +154,7 @@ function Graph(vertices, edges){
 		}
 		return o
 	}
-	
+
 	this.toTikZ    = function(){
 		var o    = "\\begin{tikzpicture}\n"
 		var maxY = 0
@@ -172,7 +172,7 @@ function Graph(vertices, edges){
 		o += "\\end{tikzpicture}"
 		return o
 	}
-	
+
 	this.degreeSeq = function(){
 		var seq = [], v
 		for(var i in this.vertices){
@@ -183,7 +183,7 @@ function Graph(vertices, edges){
 		}
 		return seq
 	}
-	
+
 	this.addVertex = function(v, cx){
 		if(!cx){ cx = context }
 		if(v instanceof Array && v.length == 2){
@@ -198,7 +198,7 @@ function Graph(vertices, edges){
 		this.cmpltd = false
 		return v
 	}
-	
+
 	this.addEdge   = function(e, cx){
 		if(!cx){ cx = context }
 		if(e instanceof Array && e.length == 2){
@@ -215,7 +215,7 @@ function Graph(vertices, edges){
 		}
 		return null
 	}
-	
+
 	this.detachChild = function(el){
 		var list, edges = []
 		if(el instanceof Vertex){ list = this.vertices; edges = el.edges }
@@ -233,11 +233,11 @@ function Graph(vertices, edges){
 		listRemove(list, el)
 		return el
 	}
-	
+
 	this.contractEdge = function(e){
 		e.contract(this)
 	}
-	
+
 	this.adjacencyList = function(){
 		var l = [], e
 		for(var i in this.edges){
@@ -246,7 +246,7 @@ function Graph(vertices, edges){
 		}
 		return l
 	}
-	
+
 	this.adjacencyMatrix = function(mobj){
 		var M = [], v, u, r
 		// TODO: Better support for directed graphs and multigraphs
@@ -262,7 +262,7 @@ function Graph(vertices, edges){
 		}
 		return mobj ? $M(M.length > 0 ? M : [0]) : M
 	}
-	
+
 	this.degreeMatrix    = function(mobj){
 		// Requires Sylvester
 		var ds = this.degreeSeq()
@@ -270,7 +270,7 @@ function Graph(vertices, edges){
 		var DM = dl ? Matrix.Diagonal(ds) : $M([0])
 		return mobj ? DM : (dl ? DM.elements : [])
 	}
-	
+
 	this.laplacianMatrix = function(mobj){
 		// Requires Sylvester
 		var AM = this.adjacencyMatrix(true)
@@ -278,7 +278,7 @@ function Graph(vertices, edges){
 		var LM = DM.subtract(AM)
 		return mobj ? LM : LM.elements
 	}
-	
+
 	this.spanningTreeCount = function(){
 		// Requires Sylvester
 		var LM = this.laplacianMatrix(true)
@@ -290,7 +290,7 @@ function Graph(vertices, edges){
 		}
 		return this.vertices.length >= 1 ? 1 : 0
 	}
-	
+
 	this.edgeGroups = function(groupname){
 		var l = {}, e, name
 		for(var i in this.edges){
@@ -304,7 +304,7 @@ function Graph(vertices, edges){
 		}
 		return l
 	}
-	
+
 	this.isWeighted = function(){
 		if(this.edges.length <= 0){ return false }
 		for(var i in this.edges){
@@ -314,7 +314,7 @@ function Graph(vertices, edges){
 		}
 		return true
 	}
-	
+
 	this.isComplete = function(){
 		// Autocompleted? Yes.
 		if(this.cmpltd){ return true }
@@ -331,7 +331,7 @@ function Graph(vertices, edges){
 		}
 		return false
 	}
-	
+
 	this.elementsWithinRect = function(x1, y1, x2, y2){
 		var xh  = Math.max(x1, x2),
 		    xl  = Math.min(x1, x2),
@@ -349,7 +349,7 @@ function Graph(vertices, edges){
 		// ????
 		return els
 	}
-	
+
 	this.complete  = function(cx){
 		this.edges = []
 		for(var i in this.vertices){
@@ -374,7 +374,7 @@ function Graph(vertices, edges){
 		}
 		this.cmpltd = true
 	}
-	
+
 	this.semiComplete = function(v, cx){
 		dlog(["Semicomplete", v, v instanceof Vertex])
 		if(v instanceof Vertex && inArray(v, this.vertices)){
@@ -389,7 +389,7 @@ function Graph(vertices, edges){
 			}
 		}
 	}
-	
+
 	this.attach()
 }
 
@@ -397,7 +397,7 @@ function Vertex(id, value, x, y){
 	if(typeof id != n){ return false }
 	if(typeof value != n && typeof value != s){ return false }
 	if(typeof x != n || typeof y != n){ return false }
-	
+
 	this.id       = id
 	this.value    = value
 	this.x        = Math.round(x)
@@ -406,15 +406,15 @@ function Vertex(id, value, x, y){
 	this.edges    = []
 	this.visible  = true
 	this.style    = defaultStyle
-	
+
 	this.draw     = function(cx){
 		this._draw(cx, this.style, true)
 	}
-	
+
 	this.drawSel  = function(cx){
 		this._draw(cx, selectedStyle, false)
 	}
-	
+
 	this._draw    = function(cx, style, label){
 		styleContext(cx, style)
 		cx.beginPath()
@@ -426,17 +426,17 @@ function Vertex(id, value, x, y){
 			drawLabel(cx, this.value, this.x, this.y - 14)
 		}
 	}
-	
+
 	this.update    = function(graph){
 		// Update various properties
 		this.degree = this.edges.length
 	}
-	
+
 	this.attach    = function(){
 		this.visible = true
 		vertices.push(this)
 	}
-	
+
 	this.detach    = function(graph){
 		if(graph instanceof Graph){
 			graph.detachChild(this)
@@ -449,17 +449,17 @@ function Vertex(id, value, x, y){
 			}
 		}
 	}
-	
+
 	this.toJSON    = function(){
 		return { id: this.id, value: this.value, x: this.x, y: this.y } // No style support yet
 	}
-	
+
 	this.toTikZ    = function(size, maxY){
 		if(typeof size != n){ size = 1 }
 		var y = (typeof maxY == n && maxY > 0) ? maxY/size - this.y/size : this.y/size
 		return "\\draw (" + this.x/size + "," + y + ") node(v" + this.id + ") {};"
 	}
-	
+
 	this.isNeighbour = function(v){
 		var e
 		for(var i in this.edges){
@@ -473,7 +473,7 @@ function Vertex(id, value, x, y){
 		}
 		return false
 	}
-	
+
 	this.edgeMultiplicity = function(v){
 		var e, c = 0
 		for(var i in this.edges){
@@ -487,7 +487,7 @@ function Vertex(id, value, x, y){
 		}
 		return c
 	}
-	
+
 	this.neighbours = function(){
 		var n = [], e
 		for(var i in this.edges){
@@ -500,13 +500,13 @@ function Vertex(id, value, x, y){
 		}
 		return n
 	}
-	
+
 	this.edgeGroupName = function(to){
 		var a = this.id, b = this.to.id
 		var c = (a <= b)
 		return (c ? a : b) + "," + (c ? b : a)
 	}
-	
+
 	this.attach()
 }
 
@@ -515,7 +515,7 @@ function Edge(id, value, from, to, directed){
 	if(typeof value != n && typeof value != s){ value = "" }
 	if(typeof from != o || typeof to != o){ return false }
 	if(typeof directed != b){ directed = false }
-	
+
 	this.id       = id
 	this.value    = value
 	this.from     = from
@@ -523,27 +523,27 @@ function Edge(id, value, from, to, directed){
 	this.visible  = true
 	this.style    = defaultStyle
 	this.directed = directed
-	
+
 	this.draw    = function(cx, total, i){
 		this._draw(cx, this.style, true, total, i)
 	}
-	
+
 	this.drawSel = function(cx, total, i){
 		this._draw(cx, selectedStyle, false, total, i)
 	}
-	
+
 	this._draw   = function(cx, style, label, total, i){
 		if(this.visible){
 			if(typeof total == u || total <= 0){ total = 1 }
 			if(typeof i     == u || i     <  0){ i     = 0 }
-			
+
 			// Edge curvature
 			var space = 50
 			var span  = (total-1) * space
 			var t     = -span/2 + i*space
 
 			//dlog(["Drawing", total, i, t])
-			
+
 			// Draw!
 			// Edge goes from a to b, and a is to the left of b (this has do be rewritten when we introduced directed edges)
 			if(this.from.x < this.to.x) {
@@ -557,11 +557,11 @@ function Edge(id, value, from, to, directed){
 				var bx = this.from.x
 				var by = this.from.y
 			}
-			
+
 			styleContext(cx, style, false)
 			cx.beginPath()
 			cx.moveTo(ax, ay)
-			
+
 			if(t == 0){
 				// Straight edge
 				cx.lineTo(bx, by)
@@ -581,22 +581,22 @@ function Edge(id, value, from, to, directed){
 
 				cx.quadraticCurveTo(alphax, alphay, bx, by)
 			}
-			
+
 			cx.stroke()
-			
+
 			//TODO: Draw arrowhead
-			
+
 			if(label && (typeof this.value == s || typeof this.value == n) && this.value !== ""){
 				var mid = this.midpoint()
 				drawLabel(cx, this.value, mid[0], mid[1])
 			}
 		}
 	}
-	
+
 	this.update  = function(graph){
-		
+
 	}
-	
+
 	this.attach  = function(){
 		this.visible = true
 		edges.push(this)
@@ -605,7 +605,7 @@ function Edge(id, value, from, to, directed){
 		this.from.degree++
 		this.to.degree++
 	}
-	
+
 	this.detach  = function(graph){
 		if(graph instanceof Graph){
 			graph.detachChild(this)
@@ -619,7 +619,7 @@ function Edge(id, value, from, to, directed){
 			this.to.degree--
 		}
 	}
-	
+
 	this.contract = function(graph){
 		var e, m = this.midpoint()
 		this.detach(graph)
@@ -648,11 +648,11 @@ function Edge(id, value, from, to, directed){
 		this.from.y = m[1]
 		this.from.update()
 	}
-	
+
 	this.toJSON  = function(){
 		return { id: this.id, value: this.value, from: this.from.id, to: this.to.id, directed: this.directed } // No style support yet
 	}
-	
+
 	this.toTikZ  = function(){
 		var n = ""
 		if(this.value !== ""){
@@ -660,17 +660,17 @@ function Edge(id, value, from, to, directed){
 		}
 		return "\\path[draw] (v" + this.from.id + ") -" + (this.directed ? ">" : "-") + n + " (v" + this.to.id + ");"
 	}
-	
+
 	this.midpoint = function(){
 		return [(this.from.x + this.to.x)/2, (this.from.y + this.to.y)/2]
 	}
-	
+
 	this.groupName = function(){
 		var a = this.from.id, b = this.to.id
 		var c = (a <= b)
 		return (c ? a : b) + "," + (c ? b : a)
 	}
-	
+
 	this.attach()
 }
 
@@ -728,7 +728,7 @@ function getElement(x, y){
 			return el // This is the one!
 		}
 	}
-	
+
 	// Edges
 	// New approach because of bezier curves
 	// Toletance tol (max distance from check point to mouse)
@@ -736,7 +736,7 @@ function getElement(x, y){
 	var edgegroups = graphs[0].edgeGroups()
 	// We find points on e with distance h (in pixels)
 	var h = 5
-	
+
 	for(var s in edgegroups){
 		//alert("Here")
 		g = edgegroups[s]
@@ -767,14 +767,14 @@ function getElement(x, y){
 			}
 			var mx = ax + 0.5 * (bx - ax)
 			var my = ay + 0.5 * (by - ay)
-			
+
 			// Length of am, since we need to normalize it
 			var l = Math.sqrt((ay-by)*(ay-by) + (bx-ax)*(bx-ax))
 
 			// Find the center point of the quadrature
 			var alphax = mx + bend * (-my+ay)/l
 			var alphay = my + bend * (mx-ax)/l
-			
+
 			// Now we have the following function of the quadratic curve Q(t)
 			// Q(t) = (1-t)^2 a + 2(1-t)t alpha + t^2 b, where t = 0..1
 			// Compute each of the d points
@@ -784,11 +784,11 @@ function getElement(x, y){
 			for (var j = 0; j < n; j += h) {
 				// Find the corresponding value for t
 				var t = j/n
-				
+
 				// Compute coordinates of Q(t) = [Qx,Qy]
 				var Qx = (1-t)*(1-t) * ax + 2*(1-t)*t * alphax + t*t * bx
 				var Qy = (1-t)*(1-t) * ay + 2*(1-t)*t * alphay + t*t * by
-				
+
 				distToMouse = Math.sqrt((Qy-y)*(Qy-y) + (Qx-x)*(Qx-x))
 
 				if (distToMouse < tol) {
@@ -797,7 +797,7 @@ function getElement(x, y){
 			}
 		}
 	}
-	
+
 	return null // None found
 }
 
@@ -858,7 +858,7 @@ function canvasMove(evt){
 	var p = evtPosition(evt, ce), el
 	var x = p[0]
 	var y = p[1]
-	
+
 	if(dragging && uimode == GJ_TOOL_SELECT){
 		// Set dragging position
 		if(dp[0] == null){
@@ -886,8 +886,8 @@ function canvasMove(evt){
 					}
 
 					// New coordinates (not too close to the edge)
-					el.x = Math.max(5, el.ox + (x - dp[0]))
-					el.y = Math.max(5, el.oy + (y - dp[1]))
+					el.x = el.ox + (x - dp[0])
+					el.y = el.oy + (y - dp[1])
 				}
 			}
 			updateState() // <-- Inefficient
@@ -962,7 +962,7 @@ function canvasKey(evt){
 		var up = 38, down = 40, left = 37, right = 39, s
 		if((k == up || k == down || k == left || k == right) && (selected.length > 0 && selected[0] != null)){
 			evt.preventDefault()
-			var inc = (k == down || k == right), 
+			var inc = (k == down || k == right),
 			    x   = (k == left || k == right)
 			for(var i in selected){
 				s = selected[i]
@@ -1165,7 +1165,7 @@ function displayInfo(panel, el, cx){
 				'<h2>Vertex</h2>' +
 				'<div class="col"><p class="field"><label for="label">Label: </label><input type="text" id="label" size="3" value="' + he(el.value) + '" autocapitalize="off"></p>' +
 				'<p class="field"><span class="i">Degree: </span>' + he(el.degree) + '</p></div>' +
-				'<div class="col"><p class="field"><label for="vx">X: </label><input type="text" id="vx" size="3" value="' + Math.round(el.x) + '"></p>' + 
+				'<div class="col"><p class="field"><label for="vx">X: </label><input type="text" id="vx" size="3" value="' + Math.round(el.x) + '"></p>' +
 				'<p class="field"><label for="vy">Y: </label><input type="text" id="vy" size="3" value="' + Math.round(el.y) + '"></p></div></div>'
 			)
 			$("input#label", info).keyup (function(){ el.value = this.value; drawAll() })
@@ -1342,35 +1342,35 @@ var dedges = [ // [ [1, 2], [2, 4], [1, 3], [3, 4], [2, 3] ]
 // Initialising the document ------------------------------------------------------------------------------------------------
 
 $(document).ready(function(){
-	
+
 	// Variables (I really need to move these out of global scope...)
 	ce        = $("canvas")
 	canvas    = ce.get(0)
 	context   = canvas.getContext("2d")
 	var scale = 1
-	
+
 	// Canvas settings
 	context.scale(scale, scale)
 	context.font         = "sans-serif"
 	context.textAlign    = "center"
 	context.textBaseline = "middle"
-	
+
 	// Elements
 	ui.properties   = $("#info")
 	ui.graphs       = $("#graphs")
 	ui.elements     = $("#elements")
 	ui.styles       = $("#styles")
-	
+
 	// Example
 	var diamond     = new Graph(dvertices, dedges)
-	
+
 	// Mouse
 	ce.mousedown     (function(){ dragging = true  })
 	$("body").mouseup(function(){ dragging = false })
 	ce.mousemove(canvasMove)
 	ce.click(canvasClick)
 	$(document).keydown(canvasKey)
-	
+
 	// Touch
 	if(touch){
 		document.body.addEventListener("touchstart",     touchStart, false)
@@ -1378,7 +1378,7 @@ $(document).ready(function(){
 		document.body.addEventListener("touchend",       touchEnd, false)
 		document.body.addEventListener("touchmove",      touchMove, false)
 	}
-	
+
 	// Buttons
 	$("#btnselect"   ).click(function(){ clearUimode() })
 	$("#btnaddvertex").click(function(){ canvasStartAddVertex(context) })
@@ -1389,10 +1389,10 @@ $(document).ready(function(){
 	$("#btnexport"   ).click(function(){ alert(graphs[gi].toTikZ()) }) // Need modal
 	$("#btnclear"    ).click(function(){ clearCanvas(context) })
 	$("#graphs a.add").click(function(){ addGraph() })
-	
+
 	// Resize
 	$(window).resize(updateState)
-	
+
 	// Let's go!
 	updateState()
 })
